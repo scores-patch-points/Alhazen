@@ -105,12 +105,45 @@ test("swarm runs eyes, reconciles, and deposits pheromone", () => {
   assert.ok(out.reconciled);
 });
 
-test("pheromones change WHICH eyes a fixed budget can afford (the honest benefit)", () => {
-  const eyes = ["raster", "layer", "text", "grid"]; // text has no OCR here → always gaps
-  const naive = eyes.slice(0, 2);                     // sniff order: raster, layer? (sniff puts text 3rd)
+test("pheromones repair a bad default eye order — the honest benefit", () => {
+  // caller's default order is bad: the two eyes that cannot see (no OCR, no cells)
+  // sit first. Under a cost budget the naive pick is blind.
+  const eyes = ["text", "grid", "raster", "layer"];
+  const naive = eyes.slice(0, 2);
   const phe = A.createPheromone();
-  for (let i = 0; i < 8; i++) A.swarm({ ...docImage() }, { pheromone: phe, eyes, budget: 2 });
+  for (let i = 0; i < 8; i++) A.swarm({ ...docImage() }, { pheromone: phe, eyes, budget: 4 }); // learn
   const learned = phe.recommend("document", eyes).slice(0, 2);
-  assert.notDeepEqual(learned, naive, "after use, the affordable eyes should reorder away from the blind one");
-  assert.ok(!learned.includes("text") || phe.strength("document", "text") >= 0, "the no-op eye should lose rank");
+  assert.deepEqual([...learned].sort(), ["layer", "raster"], "the eyes that actually saw rise to the top");
+  assert.notDeepEqual([...learned].sort(), [...naive].sort(), "and differ from the blind default pick");
+});
+
+test("pheromones do NOT change the reading when every eligible eye already runs", () => {
+  // the falsifying control: with no budget, order is irrelevant — reconcile is a
+  // set operation. This is the honest limit of the mechanism.
+  const phe = A.createPheromone();
+  const a = A.swarm({ ...docImage() }, { pheromone: phe, eyes: ["raster", "layer", "text", "grid"] });
+  const b = A.swarm({ ...docImage() }, { pheromone: phe, eyes: ["raster", "layer", "text", "grid"] });
+  assert.equal(a.reconciled.converged, b.reconciled.converged);
+  assert.equal(a.reconciled.claims, b.reconciled.claims, "same claims whether or not pheromones reorder the eyes");
+});
+
+test("object permanence: a ball behind an occluder returns as the SAME track", () => {
+  const w = 200, h = 120, frames = [];
+  const occl = [90, 0, 44, 120]; // a static gray band the ball passes behind
+  for (let k = 0; k < 30; k++) {
+    const d = blank(w, h, 255, 255, 255);
+    rect(d, w, 8 + k * 6, 52, 16, 16, 20, 20, 20);           // the ball
+    rect(d, w, occl[0], occl[1], occl[2], occl[3], 150, 150, 150); // occluder ON TOP
+    frames.push({ data: d, width: w, height: h });
+  }
+  const tracks = A.trackMotions(frames);
+  const perm = tracks.filter((t) => t.permanent);
+  assert.equal(perm.length, 1, `exactly one permanent track, got ${perm.length}`);
+  const t = perm[0];
+  assert.ok(t.occludedFrames >= 3, `hidden for a few frames, got ${t.occludedFrames}`);
+  assert.ok(t.occlusions.length >= 1, "an occlusion event was recorded");
+  assert.ok(Math.min(...t.path.map((p) => p[0])) < 40, "started on the left");
+  assert.ok(Math.max(...t.path.map((p) => p[0])) > 150, "finished on the right");
+  assert.ok(t.occlusions[0].entry && t.occlusions[0].exit, "entry and exit points recorded");
+  assert.equal(tracks.filter((x) => x.displacement > 90).length, 1, "not split into two objects");
 });
