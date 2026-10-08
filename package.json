@@ -1,0 +1,10 @@
+{
+  "name": "alhazen",
+  "version": "0.1.0",
+  "description": "The optics pipeline: binarize a page, read its keys and value formats, read grid structure, and propose rules about what it is seeing.",
+  "main": "alhazen.js",
+  "scripts": {
+    "test": "node --test test/alhazen.test.cjs"
+  },
+  "license": "MIT"
+}
