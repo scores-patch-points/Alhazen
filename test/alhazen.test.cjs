@@ -84,3 +84,11 @@ test("valueFormat reads statement values: thousands, parenthesised negatives, ni
   assert.equal(A.valueFormat("1234"), "integer");
   assert.equal(A.valueFormat("03/24/2010"), "date");
 });
+
+test("extractFormFields reads a statement row with a long label and numeric cells; a prose line is not mistaken for one", () => {
+  const f = A.extractFormFields("Current portion of operating lease liability  2,080  1,925\nSeries A preferred stock, $0.001 par value  —  —\nThis sentence has no numbers in cells at all.");
+  assert.equal(f[0].label, "Current portion of operating lease liability");
+  assert.equal(f[0].value, "2,080  1,925");
+  assert.equal(f[1].label, "Series A preferred stock, $0.001 par value");
+  assert.equal(f.length, 2);
+});

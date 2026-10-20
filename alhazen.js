@@ -83,14 +83,19 @@
 
   // ── read a form: the label a page prints and the value beside it ─────────
   // colon, or two-or-more spaces, or " - ". Lowercase labels accepted.
+  const NUMCELL = "(?:\\(?[$€£]?\\s?-?[\\d,]+(?:\\.\\d+)?\\)?%?|[—–])";
+  const NUMERIC_ROW = new RegExp("^(.{2,110}?)\\s{2,}(" + NUMCELL + "(?:\\s{2,}" + NUMCELL + ")*)$");
   function extractFormFields(text) {
     const out = [];
     for (const raw of String(text || "").split("\n")) {
       const line = raw.replace(/\s+$/, "").trim();
       if (line.length < 4) continue;
-      let label, value;
+      let label, value, numericRow = false;
       const sep = line.indexOf(":");
-      if (sep > 1 && sep <= 40) { label = line.slice(0, sep); value = line.slice(sep + 1); }
+      // a statement row: a label of any ordinary length (it may carry digits: "Series A preferred stock, $0.001 par value") then only numeric cells
+      const nr = NUMERIC_ROW.exec(line);
+      if (nr && /[A-Za-z]/.test(nr[1]) && !/:\s*$/.test(nr[1])) { label = nr[1]; value = nr[2]; numericRow = true; }
+      else if (sep > 1 && sep <= 40) { label = line.slice(0, sep); value = line.slice(sep + 1); }
       else {
         const m = /^([A-Za-z][A-Za-z ./()&#,\-]{1,40}?)(?:\s{2,}|\s+[-–—]\s+)(\S.*)$/.exec(line);
         if (!m) continue;
@@ -99,8 +104,8 @@
       label = label.replace(/[\s.:\-–—]+$/, "").trim();
       value = value.trim();
       const words = label.split(/\s+/).filter(Boolean);
-      if (label.length < 2 || words.length > 6 || /\d/.test(label) || !/[A-Za-z]/.test(label)) continue;
-      if (!value || /^[\W_]*$/.test(value)) continue;
+      if (label.length < 2 || (!numericRow && (words.length > 6 || /\d/.test(label))) || !/[A-Za-z]/.test(label)) continue;
+      if (!value || (!numericRow && /^[\W_]*$/.test(value))) continue; // a statement row of nil dashes is data
       out.push({ label, value: value.slice(0, 220) });
       if (out.length >= 60) break;
     }
