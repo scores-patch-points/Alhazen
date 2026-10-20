@@ -62,6 +62,13 @@
     const s = String(v == null ? "" : v).trim();
     if (!s) return "empty";
     if (/^[$€£]\s?\d[\d,]*\.?\d{0,2}$/.test(s)) return "currency";
+    // statements: an em/en dash for nil, thousands separators, parenthesised negatives, percentages, long dates, EIN / file numbers
+    if (/^[—–]$/.test(s)) return "nil";
+    if (/^\(?-?[$€£]?\s?\d{1,3}(,\d{3})+\)?$/.test(s) || /^\(\d+\)$/.test(s)) return "integer";
+    if (/^\(?-?[$€£]?\s?\d{1,3}(,\d{3})*\.\d+\)?$/.test(s)) return "decimal";
+    if (/^-?\d+(\.\d+)?\s?%$/.test(s)) return "percent";
+    if (/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}$/i.test(s)) return "date";
+    if (/^\d{2}-\d{7}$/.test(s) || /^\d{3}-\d{5}$/.test(s)) return "identifier";
     if (/^\d{4}-\d{2}(-\d{2})?$/.test(s) || /^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}$/.test(s) || /^(0[1-9]|1[0-2])[0-2]\d(19|20)\d{2}$/.test(s)) return "date";
     if (/^\d{1,2}:\d{2}(\s?[ap]\.?m\.?)?$/i.test(s)) return "time";
     if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s)) return "email";

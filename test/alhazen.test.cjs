@@ -69,3 +69,18 @@ test("binarizeData turns a faint dark-on-light page to black/white, leaves dark 
   A.binarizeData(dark, w, h);
   assert.equal(dark[0], 40, "a dark image is left alone");
 });
+
+test("valueFormat reads statement values: thousands, parenthesised negatives, nil dash, percent, long dates, EIN and file numbers", () => {
+  assert.equal(A.valueFormat("238,196"), "integer");
+  assert.equal(A.valueFormat("(1,234)"), "integer");
+  assert.equal(A.valueFormat("1,234.50"), "decimal");
+  assert.equal(A.valueFormat("—"), "nil");
+  assert.equal(A.valueFormat("12.5%"), "percent");
+  assert.equal(A.valueFormat("December 31, 2025"), "date");
+  assert.equal(A.valueFormat("20-3828755"), "identifier");
+  assert.equal(A.valueFormat("001-37985"), "identifier");
+  // earlier shapes are unchanged
+  assert.equal(A.valueFormat("$1,250.00"), "currency");
+  assert.equal(A.valueFormat("1234"), "integer");
+  assert.equal(A.valueFormat("03/24/2010"), "date");
+});
